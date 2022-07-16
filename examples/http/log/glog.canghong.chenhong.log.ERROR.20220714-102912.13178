@@ -1,7 +1,0 @@
-Log file created at: 2022/07/14 10:29:12
-Running on machine: canghong
-Binary: Built with gc go1.17.6 for darwin/amd64
-Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
-E0714 10:29:12.076366   13178 glog.go:25] This is error message
-E0714 10:29:12.076572   13178 glog.go:26] This is error message:123456
-E0714 10:29:12.076580   13178 proc.go:255] This is error message123456
