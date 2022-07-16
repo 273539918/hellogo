@@ -1,0 +1,10 @@
+Log file created at: 2022/07/14 10:29:12
+Running on machine: canghong
+Binary: Built with gc go1.17.6 for darwin/amd64
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W0714 10:29:12.076139   13178 glog.go:21] This is warning message
+W0714 10:29:12.076354   13178 glog.go:22] This is warning message: 123456
+W0714 10:29:12.076362   13178 proc.go:255] This is warning message123456
+E0714 10:29:12.076366   13178 glog.go:25] This is error message
+E0714 10:29:12.076572   13178 glog.go:26] This is error message:123456
+E0714 10:29:12.076580   13178 proc.go:255] This is error message123456
