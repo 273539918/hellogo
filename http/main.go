@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/golang/glog"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 )
 
 func main() {
+	flag.Parse()
+	defer glog.Flush()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/header", headerHandler)

@@ -9,7 +9,7 @@ build:
 
 release: build
 	echo "building httpserver container"
-	docker build -t canghong/httpserver:${tag}
+	docker build -t canghong/httpserver:${tag} .
 
 push:release
 	echo "pushing canghong/httpserver"
