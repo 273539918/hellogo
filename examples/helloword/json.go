@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+//注意结构体一定要大写
 type D struct {
 	FirstName string
 	LastName  string
