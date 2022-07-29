@@ -2,19 +2,20 @@ package main
 
 import (
 	"flag"
-	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
-	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v2/client"
-	util "github.com/alibabacloud-go/tea-utils/service"
-	"github.com/alibabacloud-go/tea/tea"
 	"github.com/golang/glog"
 	"golang/pkg/abm"
-	"os"
+	"golang/pkg/aliyun"
 )
 
 const (
 	VPC    = "vpc-rj98d2apg2z97c94wl1o8"
 	REGION = "us-west-1"
+	ZONE   = "us-west-1b"
 )
+
+var TAG = map[string]string{
+	"abm_console": "true",
+}
 
 var ACCOUNT = make(map[string]string, 10)
 
@@ -25,62 +26,84 @@ func init() {
 	ACCOUNT = abm.GetAccountInfo()
 }
 
-func CreateClient(accessKeyId *string, accessKeySecret *string) (_result *ecs20140526.Client, _err error) {
-	config := &openapi.Config{
-		// 您的 AccessKey ID
-		AccessKeyId: accessKeyId,
-		// 您的 AccessKey Secret
-		AccessKeySecret: accessKeySecret,
+func GetSecurityIdsByTags() []string {
+	glog.Info("查询安全组")
+	resp, err := aliyun.GetSecurityByTags(ACCOUNT["accessKey"], ACCOUNT["accessSecret"], REGION, TAG, VPC)
+	if err != nil {
+		glog.Fatal(err)
 	}
-	// 访问的域名
-	config.Endpoint = tea.String("ecs.us-west-1.aliyuncs.com")
-	_result = &ecs20140526.Client{}
-	_result, _err = ecs20140526.NewClient(config)
-	return _result, _err
+	//glog.Info(resp.Body.SecurityGroups.SecurityGroup)
+	securityIds := []string{}
+	for _, sg := range resp.Body.SecurityGroups.SecurityGroup {
+		//glog.Info(sg)
+		//glog.Info(*sg.SecurityGroupId)
+		securityIds = append(securityIds, *sg.SecurityGroupId)
+	}
+	return securityIds
 }
 
-func _main(args []*string) (respMap map[string]interface{}, _err error) {
-	client, _err := CreateClient(tea.String(ACCOUNT["accessKey"]), tea.String(ACCOUNT["accessSecret"]))
+func CreateSecurityByTas() (_err error) {
+	glog.Info("创建安全组")
+	resp, err := aliyun.CreateSecurityByTags(ACCOUNT["accessKey"], ACCOUNT["accessSecret"], REGION, TAG, VPC)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	glog.Info(resp.Body)
+	return err
+}
+
+func GetVSWIdsByTags() []string {
+	glog.Info("查询VSW")
+	resp, _err := aliyun.GetVSW(ACCOUNT["accessKey"], ACCOUNT["accessSecret"], REGION, ZONE, VPC)
 	if _err != nil {
-		return nil, _err
+		glog.Fatal(_err)
 	}
-
-	tag := ecs20140526.DescribeSecurityGroupsRequestTag{}
-	tag.SetKey("abm_console")
-	tag.SetValue("true")
-
-	tags := []*ecs20140526.DescribeSecurityGroupsRequestTag{}
-	tags = append(tags, &tag)
-
-	describeSecurityGroupsRequest := ecs20140526.DescribeSecurityGroupsRequest{
-		RegionId: tea.String("us-west-1"),
-		Tag:      tags,
+	//glog.Info("VSW信息:", resp.Body.VSwitches.VSwitch)
+	targetVSWId := []string{}
+	//检查vsw里是tag 是否包含目标 TAG
+	for _, vsw := range resp.Body.VSwitches.VSwitch {
+		tagIsInclude := aliyun.TagIsInclude(vsw.Tags.Tag, TAG)
+		if tagIsInclude {
+			targetVSWId = append(targetVSWId, *vsw.VSwitchId)
+		}
 	}
-	runtime := &util.RuntimeOptions{}
-	resp, _err := client.DescribeSecurityGroupsWithOptions(&describeSecurityGroupsRequest, runtime)
-	if _err != nil {
-		return nil, _err
-	}
+	return targetVSWId
+}
 
-	respMap = tea.ToMap(resp)
-	respStr := util.ToJSONString(tea.ToMap(resp))
-	glog.Infof("%+v \n", *respStr)
-	return respMap, _err
+func CreateVswWithTag() (_err error) {
+	glog.Info("创建VSW")
+	err := aliyun.CreateVSW(ACCOUNT["accessKey"], ACCOUNT["accessSecret"], REGION, ZONE, TAG, VPC)
+	if err != nil {
+		glog.Info(err)
+	}
+	return err
 }
 
 func main() {
 	glog.Info(ACCOUNT)
-	respMap, err := _main(tea.StringSlice(os.Args[1:]))
-	if err != nil {
-		panic(err)
+	securityIds := GetSecurityIdsByTags()
+	glog.Info("安全组信息:", securityIds)
+	if len(securityIds) < 1 {
+		err := CreateSecurityByTas()
+		if err != nil {
+			glog.Fatal(err)
+		}
+		securityIds = GetSecurityIdsByTags()
+		glog.Info("安全组信息:", securityIds)
 	}
-	body := respMap["body"]
-	securityGroups := tea.ToMap(body)["SecurityGroups"]
-	//glog.Info(securityGroups)
-	securityGroup := tea.ToMap(securityGroups)["SecurityGroup"].([]interface{})
-	//glog.Info(securityGroup)
-	for _, v := range securityGroup {
-		m := tea.ToMap(v)
-		glog.Info(m["SecurityGroupId"])
+	securityId := securityIds[0]
+	glog.Info("选择安全组:", securityId)
+	vswIds := GetVSWIdsByTags()
+	glog.Info("VSW信息:", vswIds)
+	if len(vswIds) < 1 {
+		err := CreateVswWithTag()
+		if err != nil {
+			glog.Fatal(err)
+		}
+		vswIds = GetVSWIdsByTags()
+		glog.Info("VSW信息:", vswIds)
 	}
+	vswId := vswIds[0]
+	glog.Info("选择VSW:", vswId)
+
 }
