@@ -6,9 +6,10 @@ import (
 	util "github.com/alibabacloud-go/tea-utils/service"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/golang/glog"
+	"golang/pkg/common"
 )
 
-func CreateClient(accessKeyId *string, accessKeySecret *string) (_result *ecs20140526.Client, _err error) {
+func CreateECSClient(accessKeyId *string, accessKeySecret *string) (_result *ecs20140526.Client, _err error) {
 	config := &openapi.Config{
 		// 您的 AccessKey ID
 		AccessKeyId: accessKeyId,
@@ -22,14 +23,14 @@ func CreateClient(accessKeyId *string, accessKeySecret *string) (_result *ecs201
 	return _result, _err
 }
 
-func GetSecurityByTags(AK string, SK string, region string, _tag map[string]string, vpc string) (result *ecs20140526.DescribeSecurityGroupsResponse, _err error) {
+func GetSecurityByTags(deployInfo common.DeployInfo) (result *ecs20140526.DescribeSecurityGroupsResponse, _err error) {
 
-	client, _err := CreateClient(tea.String(AK), tea.String(SK))
+	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
 	if _err != nil {
 		return nil, _err
 	}
 	tags := []*ecs20140526.DescribeSecurityGroupsRequestTag{}
-	for k, v := range _tag {
+	for k, v := range deployInfo.TAG {
 		tag := ecs20140526.DescribeSecurityGroupsRequestTag{}
 		tag.SetKey(k)
 		tag.SetValue(v)
@@ -37,9 +38,9 @@ func GetSecurityByTags(AK string, SK string, region string, _tag map[string]stri
 	}
 
 	describeSecurityGroupsRequest := ecs20140526.DescribeSecurityGroupsRequest{
-		RegionId: tea.String(region),
+		RegionId: tea.String(deployInfo.REGION),
 		Tag:      tags,
-		VpcId:    tea.String(vpc),
+		VpcId:    tea.String(deployInfo.VPC),
 	}
 	runtime := &util.RuntimeOptions{}
 	resp, _err := client.DescribeSecurityGroupsWithOptions(&describeSecurityGroupsRequest, runtime)
@@ -53,14 +54,14 @@ func GetSecurityByTags(AK string, SK string, region string, _tag map[string]stri
 
 }
 
-func CreateSecurityByTags(AK string, SK string, region string, _tag map[string]string, vpc string) (_result *ecs20140526.CreateSecurityGroupResponse, _err error) {
-	client, _err := CreateClient(tea.String(AK), tea.String(SK))
+func CreateSecurityByTags(deployInfo common.DeployInfo) (_result *ecs20140526.CreateSecurityGroupResponse, _err error) {
+	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
 	if _err != nil {
 		return nil, _err
 	}
 
 	tags := []*ecs20140526.CreateSecurityGroupRequestTag{}
-	for k, v := range _tag {
+	for k, v := range deployInfo.TAG {
 		tag := ecs20140526.CreateSecurityGroupRequestTag{}
 		tag.SetKey(k)
 		tag.SetValue(v)
@@ -68,15 +69,15 @@ func CreateSecurityByTags(AK string, SK string, region string, _tag map[string]s
 	}
 
 	createSecurityGroupRequest := &ecs20140526.CreateSecurityGroupRequest{
-		RegionId: tea.String(region),
+		RegionId: tea.String(deployInfo.REGION),
 		Tag:      tags,
-		VpcId:    tea.String(vpc),
+		VpcId:    tea.String(deployInfo.VPC),
 	}
 	runtime := &util.RuntimeOptions{}
 	resp, _err := client.CreateSecurityGroupWithOptions(createSecurityGroupRequest, runtime)
 	if _err != nil {
 		return nil, _err
 	}
-	glog.Info(util.ToJSONString(tea.ToMap(resp)))
+	glog.Info(*util.ToJSONString(tea.ToMap(resp)))
 	return resp, _err
 }

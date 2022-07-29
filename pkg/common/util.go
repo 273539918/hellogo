@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+type DeployInfo struct {
+	VPC    string
+	REGION string
+	ZONE   string
+	TAG    map[string]string
+	AK     string
+	SK     string
+}
+
 type NormalResponse struct {
 	Message string
 	Code    int

@@ -6,6 +6,7 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 	vpc20160428 "github.com/alibabacloud-go/vpc-20160428/v2/client"
 	"github.com/golang/glog"
+	"golang/pkg/common"
 )
 
 const (
@@ -27,16 +28,16 @@ func CreateVPClient(accessKeyId *string, accessKeySecret *string) (_result *vpc2
 	return _result, _err
 }
 
-func CreateVSW(AK string, SK string, region string, zone string, _tag map[string]string, vpc string) (_err error) {
-	client, _err := CreateVPClient(tea.String(AK), tea.String(SK))
+func CreateVSW(deployInfo common.DeployInfo) (_err error) {
+	client, _err := CreateVPClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
 	if _err != nil {
 		return _err
 	}
 
 	createVSwitchRequest := &vpc20160428.CreateVSwitchRequest{
 		CidrBlock:   tea.String(VSWCidr),
-		ZoneId:      tea.String(zone),
-		VpcId:       tea.String(vpc),
+		ZoneId:      tea.String(deployInfo.ZONE),
+		VpcId:       tea.String(deployInfo.VPC),
 		VSwitchName: tea.String(VSWName),
 	}
 	runtime := &util.RuntimeOptions{}
@@ -47,53 +48,24 @@ func CreateVSW(AK string, SK string, region string, zone string, _tag map[string
 	}
 	glog.Info(*util.ToJSONString(tea.ToMap(resp)))
 
-	_tag_error := TagVSW(AK, SK, region, _tag, resp.Body.VSwitchId)
+	_tag_error := TagVSW(deployInfo, resp.Body.VSwitchId)
 	if _tag_error != nil {
 		glog.Fatal(_tag_error)
 	}
 	return _create_error
 }
 
-func TagVSW(AK string, SK string, region string, _tag map[string]string, vsw *string) (_err error) {
-	client, _err := CreateVPClient(tea.String(AK), tea.String(SK))
-	if _err != nil {
-		return _err
-	}
-
-	tags := []*vpc20160428.TagResourcesRequestTag{}
-	for k, v := range _tag {
-		tag := vpc20160428.TagResourcesRequestTag{}
-		tag.SetKey(k)
-		tag.SetValue(v)
-		tags = append(tags, &tag)
-	}
-	resourceId := []*string{vsw}
-
-	tagResourcesRequest := &vpc20160428.TagResourcesRequest{
-		RegionId:     tea.String(region),
-		Tag:          tags,
-		ResourceType: tea.String("VSWITCH"),
-		ResourceId:   resourceId,
-	}
-	runtime := &util.RuntimeOptions{}
-	_, _tag_error := client.TagResourcesWithOptions(tagResourcesRequest, runtime)
-	if _tag_error != nil {
-		glog.Fatal(_tag_error)
-	}
-	return _tag_error
-}
-
-func GetVSW(AK string, SK string, region string, zone string, vpc string) (_result *vpc20160428.DescribeVSwitchesResponse, _err error) {
-	client, _err := CreateVPClient(tea.String(AK), tea.String(SK))
+func GetVSW(deployInfo common.DeployInfo) (_result *vpc20160428.DescribeVSwitchesResponse, _err error) {
+	client, _err := CreateVPClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
 	if _err != nil {
 		glog.Fatal(_err)
 		return nil, _err
 	}
 
 	describeVSwitchesRequest := &vpc20160428.DescribeVSwitchesRequest{
-		RegionId:    tea.String(region),
-		ZoneId:      tea.String(zone),
-		VpcId:       tea.String(vpc),
+		RegionId:    tea.String(deployInfo.REGION),
+		ZoneId:      tea.String(deployInfo.ZONE),
+		VpcId:       tea.String(deployInfo.VPC),
 		VSwitchName: tea.String(VSWName),
 		PageNumber:  tea.Int32(1),
 		PageSize:    tea.Int32(1),
@@ -103,6 +75,6 @@ func GetVSW(AK string, SK string, region string, zone string, vpc string) (_resu
 	if _err != nil {
 		glog.Fatal(_err)
 	}
-
+	glog.Info(*util.ToJSONString(tea.ToMap(resp)))
 	return resp, _err
 }
