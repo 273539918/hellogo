@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"github.com/golang/glog"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"time"
 )
 
@@ -51,4 +53,18 @@ func DoRequest(url string, method string, data io.Reader, header map[string]stri
 	//glog.Info("response Headers:", resp.Header)
 	//glog.Info("response Body:", resp.Body)
 	return json.NewDecoder(resp.Body).Decode(target)
+}
+
+func GetFileContent(fileName string) (str string) {
+	filePath := "../../cmd/shell/" + fileName
+	absPath, _ := filepath.Abs(filePath)
+	//glog.Info(absPath)
+	glog.Info("loading file :", absPath)
+	content, _err := ioutil.ReadFile(absPath)
+	if _err != nil {
+		glog.Fatal(_err)
+		return ""
+	}
+	str = string(content)
+	return str
 }

@@ -81,6 +81,7 @@ func CreateVswWithTag() (_err error) {
 }
 
 func GetEcsIdsByTag() (ecs []string) {
+	glog.Info("查询ECS")
 	resp, err := aliyun.GetEcsByTag(DEPLOYINFO)
 	if err != nil {
 		glog.Fatal(err)
@@ -90,6 +91,35 @@ func GetEcsIdsByTag() (ecs []string) {
 		ecsIds = append(ecsIds, *ecs.InstanceId)
 	}
 	return ecsIds
+}
+
+func CreateECSWithTag(vsw string, sg string) {
+	glog.Info("创建ECS")
+	err := aliyun.CreateECSWithTag(DEPLOYINFO, vsw, sg)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+}
+
+//根据命令名获取命令Id，如果不存在会创建，脚本内容会在 golang/cmd/shell 按照名称查找
+func GetCommandIdByName(commandName string) (commandId string) {
+	resp, _err := aliyun.GetCommandByName(DEPLOYINFO, commandName)
+	if _err != nil {
+		glog.Fatal(_err)
+	}
+	if *resp.Body.TotalCount <= 0 {
+		commandContent := common.GetFileContent(commandName)
+		_err := aliyun.CreateCommand(DEPLOYINFO, commandName, &commandContent)
+		if _err != nil {
+			glog.Fatal(_err)
+		}
+		resp, _err = aliyun.GetCommandByName(DEPLOYINFO, commandName)
+	}
+	for _, command := range resp.Body.Commands.Command {
+		commandId = *command.CommandId
+	}
+	return commandId
 }
 
 func main() {
@@ -125,6 +155,18 @@ func main() {
 		vswId := vswIds[0]
 		glog.Info("选择VSW:", vswId)
 		//创建ECS
+		CreateECSWithTag(vswId, securityId)
+		ecsIds = GetEcsIdsByTag()
+		glog.Info("ECS信息:", ecsIds)
 	}
+	//选择ECS
+	ecsId := ecsIds[0]
+	glog.Info("选择ECS:", ecsId)
+	glog.Info("启动ECS:", ecsId)
+	aliyun.StartECSInstance(DEPLOYINFO, ecsId)
+	//执行云助手命令
+	commandId := GetCommandIdByName("console-init.sh")
+	glog.Info("云助手命令Id:", commandId)
+	aliyun.InvokeECSCommand(DEPLOYINFO, ecsId, commandId)
 
 }
