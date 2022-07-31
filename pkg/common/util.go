@@ -68,3 +68,16 @@ func GetFileContent(fileName string) (str string) {
 	str = string(content)
 	return str
 }
+
+// input ["a","b"]
+// output "["a","b"]"
+func StringArrayToJsonArrStr(arr []string) (str string) {
+	//fmt.Println(arr)
+	r := "["
+	for _, str := range arr {
+		r = r + "\"" + str + "\"" + ","
+	}
+	r = r[:len(r)-1]
+	r = r + "]"
+	return r
+}

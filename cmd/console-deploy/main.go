@@ -103,7 +103,7 @@ func CreateECSWithTag(vsw string, sg string) {
 }
 
 //根据命令名获取命令Id，如果不存在会创建，脚本内容会在 golang/cmd/shell 按照名称查找
-func GetCommandIdByName(commandName string) (commandId string) {
+func CreateCommandIdByNameIfNotExist(commandName string) (commandId string) {
 	resp, _err := aliyun.GetCommandByName(DEPLOYINFO, commandName)
 	if _err != nil {
 		glog.Fatal(_err)
@@ -120,6 +120,29 @@ func GetCommandIdByName(commandName string) (commandId string) {
 		commandId = *command.CommandId
 	}
 	return commandId
+}
+
+func CreateSnatIfNotExist(vsw string) {
+	resp, _err := aliyun.GetSnatEntry(DEPLOYINFO, vsw)
+	if _err != nil {
+		glog.Fatal(_err)
+	}
+	if *resp.Body.TotalCount < 1 {
+		aliyun.CreateSnatEntry(DEPLOYINFO, vsw)
+	}
+}
+
+func GetEcsVSW(ecsId string) (vsw string) {
+	glog.Info("获取ECS的VSW")
+	ecsDetail, _err := aliyun.GetECSDetailById(DEPLOYINFO, []string{ecsId})
+	if _err != nil {
+		glog.Fatal(_err)
+	}
+	if len(ecsDetail.Body.Instances.Instance) < 1 {
+		glog.Fatal("找不到ECS信息")
+	}
+
+	return *ecsDetail.Body.Instances.Instance[0].VpcAttributes.VSwitchId
 }
 
 func main() {
@@ -164,8 +187,10 @@ func main() {
 	glog.Info("选择ECS:", ecsId)
 	glog.Info("启动ECS:", ecsId)
 	aliyun.StartECSInstance(DEPLOYINFO, ecsId)
+	//创建SNAT
+	CreateSnatIfNotExist(GetEcsVSW(ecsId))
 	//执行云助手命令
-	commandId := GetCommandIdByName("console-init.sh")
+	commandId := CreateCommandIdByNameIfNotExist("console-init.sh")
 	glog.Info("云助手命令Id:", commandId)
 	aliyun.InvokeECSCommand(DEPLOYINFO, ecsId, commandId)
 

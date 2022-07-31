@@ -49,6 +49,27 @@ func GetEcsByTag(deployInfo common.DeployInfo) (_result *ecs20140526.DescribeIns
 	return resp, nil
 }
 
+func GetECSDetailById(deployInfo common.DeployInfo, ecsIds []string) (_result *ecs20140526.DescribeInstancesResponse, _err error) {
+	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
+	if _err != nil {
+		return nil, _err
+	}
+
+	glog.Info(common.StringArrayToJsonArrStr(ecsIds))
+	describeInstancesRequest := &ecs20140526.DescribeInstancesRequest{
+		RegionId:    tea.String(deployInfo.REGION),
+		InstanceIds: tea.String(common.StringArrayToJsonArrStr(ecsIds)),
+		//InstanceIds: tea.String("[\"i-rj996a1oy510h4fwvstf\"]"),
+	}
+
+	resp, _err := client.DescribeInstancesWithOptions(describeInstancesRequest, &util.RuntimeOptions{})
+	if _err != nil {
+		return nil, _err
+	}
+	return resp, _err
+
+}
+
 func GetAvailableECSInstanceType() (intanceType string) {
 
 	return "ecs.hfg6.large"
@@ -236,11 +257,11 @@ func InvokeECSCommand(deployInfo common.DeployInfo, instanceId string, commanId 
 			glog.Fatalf("命令执行失败 %+v", invokeResult)
 			return false
 		} else if invokeRecordStatus == "Running" {
-			glog.Infof("命令执行中 %+v", invokeResult)
+			glog.Infof("命令执行中")
 			time.Sleep(time.Second * 10)
 			resp, _ = client.DescribeInvocationResultsWithOptions(describeInvocationResultsRequest, &util.RuntimeOptions{})
 		} else {
-			glog.Infof("命令执行成功 %+v", invokeResult)
+			glog.Infof("命令执行成功")
 			break
 		}
 	}

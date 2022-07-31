@@ -14,4 +14,5 @@ func main() {
 	fmt.Println("input parameter is : ", *name)
 	fullString := fmt.Sprintf("Hello %s from Go\n", *name)
 	fmt.Println(fullString)
+
 }
