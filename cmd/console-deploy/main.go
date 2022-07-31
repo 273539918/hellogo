@@ -123,12 +123,15 @@ func CreateCommandIdByNameIfNotExist(commandName string) (commandId string) {
 }
 
 func CreateSnatIfNotExist(vsw string) {
-	resp, _err := aliyun.GetSnatEntry(DEPLOYINFO, vsw)
+
+	natInfo := aliyun.GetNatInfo(DEPLOYINFO)
+
+	resp, _err := aliyun.GetSnatEntry(DEPLOYINFO, vsw, natInfo)
 	if _err != nil {
 		glog.Fatal(_err)
 	}
 	if *resp.Body.TotalCount < 1 {
-		aliyun.CreateSnatEntry(DEPLOYINFO, vsw)
+		aliyun.CreateSnatEntry(DEPLOYINFO, vsw, natInfo)
 	}
 }
 
