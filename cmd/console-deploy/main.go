@@ -9,12 +9,15 @@ import (
 )
 
 var DEPLOYINFO = common.DeployInfo{
-	VPC:    "vpc-rj98d2apg2z97c94wl1o8",
-	REGION: "us-west-1",
-	ZONE:   "us-west-1b",
+	VPC:     "vpc-rj98d2apg2z97c94wl1o8",
+	REGION:  "us-west-1",
+	ZONE:    "us-west-1b",
+	CLUSTER: "asi_us-west-1_flink_b01",
+	COMMAND: "美西计算集群",
 	TAG: map[string]string{
 		"abm_console": "true",
 	},
+	BASTION: "bastionhost-cn-2r42h8ac825",
 }
 
 func init() {
@@ -148,6 +151,18 @@ func GetEcsVSW(ecsId string) (vsw string) {
 	return *ecsDetail.Body.Instances.Instance[0].VpcAttributes.VSwitchId
 }
 
+func EcsAddPublicEipIfNoExist(ecsId string) {
+	glog.Info("获取ECS的public eip")
+	ecsDetail, _err := aliyun.GetECSDetailById(DEPLOYINFO, []string{ecsId})
+	if _err != nil {
+		glog.Fatal(_err)
+	}
+	if len(ecsDetail.Body.Instances.Instance) < 1 {
+		glog.Fatal("找不到ECS信息")
+	}
+
+}
+
 func main() {
 	glog.Info(DEPLOYINFO)
 	//获取ECS
@@ -196,5 +211,9 @@ func main() {
 	commandId := CreateCommandIdByNameIfNotExist("console-init.sh")
 	glog.Info("云助手命令Id:", commandId)
 	aliyun.InvokeECSCommand(DEPLOYINFO, ecsId, commandId)
+	//ECS添加ECIP
+	//EcsAddPublicEipIfNoExist(ecsId)
+	//添加堡垒机
+	aliyun.BastionAddEcs(DEPLOYINFO, ecsId, "172.20.28.49")
 
 }

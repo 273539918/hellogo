@@ -1,6 +1,7 @@
 package aliyun
 
 import (
+	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v2/client"
 	util "github.com/alibabacloud-go/tea-utils/service"
 	"github.com/alibabacloud-go/tea/tea"
@@ -18,11 +19,31 @@ const (
 
 var INSTANCETYPES = []string{"ecs.hfg6.large"}
 
-func GetEcsByTag(deployInfo common.DeployInfo) (_result *ecs20140526.DescribeInstancesResponse, _err error) {
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		return nil, _err
+func CreateECSClient(accessKeyId *string, accessKeySecret *string, region string) (_result *ecs20140526.Client, _err error) {
+	config := &openapi.Config{
+		// 您的 AccessKey ID
+		AccessKeyId: accessKeyId,
+		// 您的 AccessKey Secret
+		AccessKeySecret: accessKeySecret,
 	}
+	// 访问的域名
+	endpoint := "ecs." + region + ".aliyuncs.com"
+	config.Endpoint = tea.String(endpoint)
+	_result = &ecs20140526.Client{}
+	_result, _err = ecs20140526.NewClient(config)
+	return _result, _err
+}
+
+func GetEcsClient(deployInfo common.DeployInfo) (_result *ecs20140526.Client) {
+	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK), deployInfo.REGION)
+	if _err != nil {
+		glog.Fatal(_err)
+	}
+	return client
+}
+
+func GetEcsByTag(deployInfo common.DeployInfo) (_result *ecs20140526.DescribeInstancesResponse, _err error) {
+	client := GetEcsClient(deployInfo)
 
 	tags := []*ecs20140526.DescribeInstancesRequestTag{}
 	for k, v := range deployInfo.TAG {
@@ -50,10 +71,7 @@ func GetEcsByTag(deployInfo common.DeployInfo) (_result *ecs20140526.DescribeIns
 }
 
 func GetECSDetailById(deployInfo common.DeployInfo, ecsIds []string) (_result *ecs20140526.DescribeInstancesResponse, _err error) {
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		return nil, _err
-	}
+	client := GetEcsClient(deployInfo)
 
 	glog.Info(common.StringArrayToJsonArrStr(ecsIds))
 	describeInstancesRequest := &ecs20140526.DescribeInstancesRequest{
@@ -78,10 +96,7 @@ func GetAvailableECSInstanceType() (intanceType string) {
 
 func CreateECSWithTag(deployInfo common.DeployInfo, vsw string, sg string) (_err error) {
 
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		return _err
-	}
+	client := GetEcsClient(deployInfo)
 
 	tags := []*ecs20140526.CreateInstanceRequestTag{}
 	for k, v := range deployInfo.TAG {
@@ -111,11 +126,8 @@ func CreateECSWithTag(deployInfo common.DeployInfo, vsw string, sg string) (_err
 }
 
 func GetEcsStatus(deployInfo common.DeployInfo, instanceIds []*string) (result map[string]string, err error) {
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		glog.Fatal(_err)
-		return nil, _err
-	}
+	client := GetEcsClient(deployInfo)
+
 	describeInstanceStatusRequest := &ecs20140526.DescribeInstanceStatusRequest{
 		RegionId:   tea.String(deployInfo.REGION),
 		InstanceId: instanceIds,
@@ -135,11 +147,8 @@ func GetEcsStatus(deployInfo common.DeployInfo, instanceIds []*string) (result m
 }
 
 func StartECSInstance(deployInfo common.DeployInfo, instanceId string) (success bool) {
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		glog.Fatal(_err)
-		return false
-	}
+	client := GetEcsClient(deployInfo)
+
 	startInstanceRequest := &ecs20140526.StartInstanceRequest{
 		DryRun:     tea.Bool(DRYRUN),
 		InstanceId: tea.String(instanceId),
@@ -169,11 +178,7 @@ func StartECSInstance(deployInfo common.DeployInfo, instanceId string) (success 
 }
 
 func CreateCommand(deployInfo common.DeployInfo, name string, commandContent *string) (_err error) {
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		glog.Fatal(_err)
-		return _err
-	}
+	client := GetEcsClient(deployInfo)
 	createCommandRequest := &ecs20140526.CreateCommandRequest{
 		RegionId:        tea.String(deployInfo.REGION),
 		Name:            tea.String(name),
@@ -192,11 +197,7 @@ func CreateCommand(deployInfo common.DeployInfo, name string, commandContent *st
 }
 
 func GetCommandByName(deployInfo common.DeployInfo, commandName string) (_result *ecs20140526.DescribeCommandsResponse, _err error) {
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		glog.Fatal(_err)
-		return nil, _err
-	}
+	client := GetEcsClient(deployInfo)
 
 	describeCommandsRequest := &ecs20140526.DescribeCommandsRequest{
 		RegionId: tea.String(deployInfo.REGION),
@@ -212,11 +213,7 @@ func GetCommandByName(deployInfo common.DeployInfo, commandName string) (_result
 
 func InvokeECSCommand(deployInfo common.DeployInfo, instanceId string, commanId string) (success bool) {
 	glog.Infof("%s 执行 %s", instanceId, commanId)
-	client, _err := CreateECSClient(tea.String(deployInfo.AK), tea.String(deployInfo.SK))
-	if _err != nil {
-		glog.Fatal(_err)
-		return false
-	}
+	client := GetEcsClient(deployInfo)
 
 	describeInvocationResultsRequest := &ecs20140526.DescribeInvocationResultsRequest{
 		RegionId:           tea.String(deployInfo.REGION),
@@ -254,10 +251,10 @@ func InvokeECSCommand(deployInfo common.DeployInfo, instanceId string, commanId 
 		invokeResult := resp.Body.Invocation.InvocationResults.InvocationResult[0]
 		invokeRecordStatus = *invokeResult.InvokeRecordStatus
 		if invokeRecordStatus == "Failed" || invokeRecordStatus == "Stopped" {
-			glog.Fatalf("命令执行失败 %+v", invokeResult)
+			glog.Fatalf("云助手命令执行失败 %+v", invokeResult)
 			return false
 		} else if invokeRecordStatus == "Running" {
-			glog.Infof("命令执行中")
+			glog.Infof("云助手命令执行中")
 			time.Sleep(time.Second * 10)
 			resp, _ = client.DescribeInvocationResultsWithOptions(describeInvocationResultsRequest, &util.RuntimeOptions{})
 		} else {

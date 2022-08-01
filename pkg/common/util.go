@@ -11,12 +11,15 @@ import (
 )
 
 type DeployInfo struct {
-	VPC    string
-	REGION string
-	ZONE   string
-	TAG    map[string]string
-	AK     string
-	SK     string
+	VPC     string
+	REGION  string
+	ZONE    string
+	TAG     map[string]string
+	AK      string
+	SK      string
+	BASTION string //堡垒机
+	CLUSTER string
+	COMMAND string
 }
 
 type NormalResponse struct {
